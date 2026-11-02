@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimalist Laser & Mirror Puzzle</title>
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#18181b',
+                            900: '#121214',
+                            950: '#09090b',
+                        },
+                        burgundy: {
+                            500: '#881337',
+                            600: '#750f2f',
+                            700: '#5c0b24',
+                            800: '#4c0519',
+                            900: '#380412',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for clean icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        canvas {
+            touch-action: none;
+        }
+        /* Custom glow utilities */
+        .laser-glow-red { filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.8)); }
+        .laser-glow-cyan { filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.8)); }
+        .laser-glow-emerald { filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.8)); }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-burgundy-700 selection:text-white">
+
+<!-- Header Navigation -->
+<header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-burgundy-600 to-burgundy-900 flex items-center justify-center border border-burgundy-500/30 shadow-lg shadow-burgundy-900/50">
+                <i class="fa-solid fa-laser-pointer text-rose-400 text-lg"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-rose-300 bg-clip-text text-transparent">LUMINA</h1>
+                <p class="text-xs text-slate-400 font-medium tracking-wide">Minimalist Laser Puzzle</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2 sm:space-x-4">
+            <button id="soundToggleBtn" onclick="toggleSound()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition text-sm flex items-center space-x-2 border border-slate-700">
+                <i id="soundIcon" class="fa-solid fa-volume-high text-rose-400"></i>
+                <span class="hidden sm:inline" id="soundText">Sound On</span>
+            </button>
+            <button onclick="openHelpModal()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition text-sm flex items-center space-x-2 border border-slate-700">
+                <i class="fa-solid fa-circle-question text-rose-400"></i>
+                <span class="hidden sm:inline">How to Play</span>
+            </button>
+        </div>
+    </div>
+</header>
+
+<!-- Main Content Area -->
+<main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+
+    <!-- Left Sidebar: Level Select & Controls -->
+    <div class="lg:col-span-1 space-y-6">
+        <!-- Mode Switcher -->
+        <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 shadow-xl">
+            <div class="grid grid-cols-2 gap-2 p-1 bg-slate-950 rounded-xl border border-slate-800/60">
+                <button id="btnCampaignTab" onclick="switchMode('campaign')" class="py-2.5 px-3 rounded-lg text-sm font-semibold transition bg-burgundy-700 text-white shadow-md shadow-burgundy-900/40">
+                    <i class="fa-solid fa-map-location-dot mr-1.5"></i> Campaign
+                </button>
+                <button id="btnSandboxTab" onclick="switchMode('sandbox')" class="py-2.5 px-3 rounded-lg text-sm font-semibold transition text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-hammer mr-1.5"></i> Sandbox
+                </button>
+            </div>
+        </div>
+
+        <!-- Campaign Selector Container -->
+        <div id="campaignPanel" class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5 shadow-xl space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="font-semibold text-sm text-slate-300 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-bars-progress text-rose-500 mr-2"></i> Levels
+                </h2>
+                <span id="levelIndicator" class="text-xs bg-burgundy-900/80 text-rose-300 px-2.5 py-1 rounded-full border border-burgundy-700/50 font-medium">Level 1 of 5</span>
+            </div>
+            <div id="levelList" class="grid grid-cols-1 gap-2">
+                <!-- Dynamically populated level buttons -->
+            </div>
+            <div class="pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs text-slate-400">
+                <span>Rotations: <strong id="rotationsCount" class="text-rose-400">0</strong></span>
+                <button onclick="resetCurrentLevel()" class="hover:text-white underline transition">Reset Level</button>
+            </div>
+        </div>
+
+        <!-- Sandbox Toolbar Container (Hidden by default) -->
+        <div id="sandboxPanel" class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5 shadow-xl space-y-4 hidden">
+            <div class="flex items-center justify-between">
+                <h2 class="font-semibold text-sm text-slate-300 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-toolbox text-rose-500 mr-2"></i> Sandbox Toolset
+                </h2>
+                <span class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full">Custom Mode</span>
+            </div>
+            <p class="text-xs text-slate-400">Select a tool and click on the grid to place or click items to remove/rotate.</p>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="setSandboxTool('mirror')" id="tool-mirror" class="p-3 rounded-xl border border-burgundy-600 bg-burgundy-900/40 text-rose-300 font-medium text-xs flex flex-col items-center justify-center space-y-1.5 transition">
+                    <i class="fa-solid fa-slash text-base"></i> Mirror (45°)
+                </button>
+                <button onclick="setSandboxTool('splitter')" id="tool-splitter" class="p-3 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 font-medium text-xs flex flex-col items-center justify-center space-y-1.5 transition">
+                    <i class="fa-solid fa-arrows-split-up-and-left text-base"></i> Splitter
+                </button>
+                <button onclick="setSandboxTool('blocker')" id="tool-blocker" class="p-3 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 font-medium text-xs flex flex-col items-center justify-center space-y-1.5 transition">
+                    <i class="fa-solid fa-cube text-base"></i> Blocker Wall
+                </button>
+                <button onclick="setSandboxTool('target')" id="tool-target" class="p-3 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 font-medium text-xs flex flex-col items-center justify-center space-y-1.5 transition">
+                    <i class="fa-solid fa-bullseye text-base"></i> Target Node
+                </button>
+            </div>
+            <div class="space-y-2 pt-2">
+                <button onclick="setSandboxTool('eraser')" id="tool-eraser" class="w-full py-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 hover:text-rose-400 font-medium text-xs flex items-center justify-center space-x-2 transition">
+                    <i class="fa-solid fa-eraser"></i> <span>Eraser (Click to delete)</span>
+                </button>
+                <button onclick="clearSandboxGrid()" class="w-full py-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 hover:text-rose-400 font-medium text-xs flex items-center justify-center space-x-2 transition">
+                    <i class="fa-solid fa-trash-can"></i> <span>Clear Board</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats / Info Card -->
+        <div class="bg-gradient-to-br from-slate-900 to-slate-900/50 border border-slate-800/80 rounded-2xl p-5 shadow-xl space-y-3">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-lg bg-burgundy-900/60 border border-burgundy-700/50 flex items-center justify-center text-rose-400 text-sm">
+                    <i class="fa-solid fa-lightbulb"></i>
+                </div>
+                <div>
+                    <h3 class="text-xs font-semibold text-slate-200">Objective</h3>
+                    <p class="text-xs text-slate-400">Direct the glowing laser beam to illuminate all target nodes on the grid.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Center Canvas & Game Area -->
+    <div class="lg:col-span-3 flex flex-col items-center space-y-4">
+        <!-- Canvas Container with Glass Card Styling -->
+        <div class="relative w-full aspect-square max-w-[620px] bg-slate-900/90 border border-slate-800/80 rounded-3xl p-4 shadow-2xl flex items-center justify-center overflow-hidden group">
+            <!-- Background Grid decorative overlay -->
+            <div class="absolute inset-0 bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:24px_24px] opacity-25 pointer-events-none"></div>
+
+            <!-- Main HTML5 Canvas -->
+            <canvas id="gameCanvas" class="w-full h-full rounded-2xl shadow-inner cursor-pointer"></canvas>
+
+            <!-- Level Complete Overlay Banner -->
+            <div id="victoryOverlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center space-y-4 opacity-0 pointer-events-none transition-all duration-300 z-20">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white text-2xl shadow-xl shadow-emerald-900/50 animate-bounce">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <div class="text-center space-y-1">
+                    <h2 class="text-2xl font-bold tracking-tight text-white">Level Solved!</h2>
+                    <p class="text-sm text-slate-400">You successfully activated all laser targets.</p>
+                </div>
+                <div class="flex space-x-3 pt-2">
+                    <button onclick="nextLevel()" class="px-6 py-3 rounded-xl bg-gradient-to-r from-burgundy-600 to-burgundy-800 hover:from-burgundy-500 hover:to-burgundy-700 text-white font-semibold text-sm shadow-lg shadow-burgundy-900/50 transition transform active:scale-95 flex items-center space-x-2">
+                        <span>Next Level</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Action Bar -->
+        <div class="w-full max-w-[620px] flex items-center justify-between px-2">
+            <div class="flex items-center space-x-2 text-xs text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+                <span id="statusMessage">Click mirrors to rotate 90°</span>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="rotateAllMirrorsClockwise()" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-medium transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-rotate-right text-rose-400"></i>
+                    <span>Spin All</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Footer -->
+<footer class="border-t border-slate-800/80 py-4 text-center text-xs text-slate-500">
+    <p>Lumina Puzzle — Minimalist Laser & Mirror Physics Sandbox</p>
+</footer>
+
+<!-- Help Modal -->
+<div id="helpModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 opacity-0 pointer-events-none transition-all duration-300">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5">
+        <div class="flex items-center justify-between">
+            <h3 class="font-bold text-lg text-white flex items-center">
+                <i class="fa-solid fa-circle-question text-rose-500 mr-2.5"></i> How to Play Lumina
+            </h3>
+            <button onclick="closeHelpModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="space-y-3 text-sm text-slate-300">
+            <div class="flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-lg bg-burgundy-900/60 border border-burgundy-700/50 flex items-center justify-center text-rose-400 shrink-0 mt-0.5">1</div>
+                <p><strong>Laser Emitters:</strong> Emit a continuous beam of colored light across the grid.</p>
+            </div>
+            <div class="flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-lg bg-burgundy-900/60 border border-burgundy-700/50 flex items-center justify-center text-rose-400 shrink-0 mt-0.5">2</div>
+                <p><strong>Mirrors:</strong> Click any mirror tile to rotate it 90 degrees and change the reflection path.</p>
+            </div>
+            <div class="flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-lg bg-burgundy-900/60 border border-burgundy-700/50 flex items-center justify-center text-rose-400 shrink-0 mt-0.5">3</div>
+                <p><strong>Splitters & Targets:</strong> Splitters divide a beam into two directions. Targets must be fully illuminated to win.</p>
+            </div>
+            <div class="flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-lg bg-burgundy-900/60 border border-burgundy-700/50 flex items-center justify-center text-rose-400 shrink-0 mt-0.5">4</div>
+                <p><strong>Sandbox Mode:</strong> Build your own custom laser puzzles, place elements, and test them out!</p>
+            </div>
+        </div>
+        <button onclick="closeHelpModal()" class="w-full py-3 rounded-xl bg-burgundy-700 hover:bg-burgundy-600 text-white font-semibold text-sm transition shadow-lg shadow-burgundy-900/40">
+            Got it, Let's Play!
+        </button>
+    </div>
+</div>
+
+<!-- JavaScript Application Logic -->
+<script>
+    // --- Web Audio API Synth for Satisfying Interactions ---
+    let audioCtx = null;
+    let soundEnabled = true;
+
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.08, vol = 0.1) {
+        if (!soundEnabled) return;
+        try {
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        } catch (e) {
+            // AudioContext policy restrictions ignored
+        }
+    }
+
+    function toggleSound() {
+        soundEnabled = !soundEnabled;
+        const icon = document.getElementById('soundIcon');
+        const text = document.getElementById('soundText');
+        if (soundEnabled) {
+            icon.className = "fa-solid fa-volume-high text-rose-400";
+            text.textContent = "Sound On";
+            playTone(440, 'sine', 0.1, 0.1);
+        } else {
+            icon.className = "fa-solid fa-volume-xmark text-slate-500";
+            text.textContent = "Sound Off";
+        }
+    }
+
+    // --- Game State & Constants ---
+    const GRID_SIZE = 8;
+    let currentMode = 'campaign'; // 'campaign' or 'sandbox'
+    let currentLevelIndex = 0;
+    let rotationCount = 0;
+    let sandboxTool = 'mirror'; // 'mirror', 'splitter', 'blocker', 'target', 'eraser'
+
+    // Entity Types
+    // 'emitter': {x, y, dir: 'UP'|'DOWN'|'LEFT'|'RIGHT', color: 'red'|'cyan'|'emerald'}
+    // 'mirror': {x, y, angle: 0 (diag \), 1 (diag /)} or rotate 45 degrees
+    // 'splitter': {x, y}
+    // 'blocker': {x, y}
+    // 'target': {x, y, color: 'red'|'cyan'|'emerald', active: false}
+
+    const CAMPAIGN_LEVELS = [
+        {
+            name: "Level 1: First Reflection",
+            emitter: { x: 0, y: 3, dir: 'RIGHT', color: 'red' },
+            mirrors: [
+                { x: 5, y: 3, angle: 0 }
+            ],
+            splitters: [],
+            blockers: [],
+            targets: [
+                { x: 5, y: 7, color: 'red' }
+            ]
+        },
+        {
+            name: "Level 2: Dual Bounces",
+            emitter: { x: 0, y: 0, dir: 'RIGHT', color: 'cyan' },
+            mirrors: [
+                { x: 6, y: 0, angle: 0 },
+                { x: 6, y: 6, angle: 1 }
+            ],
+            splitters: [],
+            blockers: [
+                { x: 3, y: 0 }
+            ],
+            targets: [
+                { x: 1, y: 6, color: 'cyan' }
+            ]
+        },
+        {
+            name: "Level 3: The Splitter Maze",
+            emitter: { x: 3, y: 0, dir: 'DOWN', color: 'emerald' },
+            mirrors: [
+                { x: 3, y: 3, angle: 0 },
+                { x: 1, y: 5, angle: 1 }
+            ],
+            splitters: [
+                { x: 3, y: 5 }
+            ],
+            blockers: [
+                { x: 3, y: 1 }
+            ],
+            targets: [
+                { x: 0, y: 5, color: 'emerald' },
+                { x: 7, y: 5, color: 'emerald' }
+            ]
+        },
+        {
+            name: "Level 4: Precision Matrix",
+            emitter: { x: 0, y: 7, dir: 'UP', color: 'red' },
+            mirrors: [
+                { x: 0, y: 2, angle: 1 },
+                { x: 4, y: 2, angle: 0 },
+                { x: 4, y: 5, angle: 1 }
+            ],
+            splitters: [],
+            blockers: [
+                { x: 2, y: 2 },
+                { x: 2, y: 5 }
+            ],
+            targets: [
+                { x: 7, y: 5, color: 'red' }
+            ]
+        },
+        {
+            name: "Level 5: Lumina Mastermind",
+            emitter: { x: 7, y: 7, dir: 'LEFT', color: 'cyan' },
+            mirrors: [
+                { x: 2, y: 7, angle: 0 },
+                { x: 2, y: 2, angle: 1 },
+                { x: 5, y: 2, angle: 0 }
+            ],
+            splitters: [
+                { x: 2, y: 4 }
+            ],
+            blockers: [
+                { x: 4, y: 4 }
+            ],
+            targets: [
+                { x: 5, y: 0, color: 'cyan' },
+                { x: 7, y: 4, color: 'cyan' }
+            ]
+        }
+    ];
+
+    // Active level state container
+    let levelData = {
+        emitter: { x: 0, y: 0, dir: 'RIGHT', color: 'red' },
+        mirrors: [],
+        splitters: [],
+        blockers: [],
+        targets: []
+    };
+
+    // Canvas Setup
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    let tileSize = 50;
+
+    function resizeCanvas() {
+        const container = canvas.parentElement;
+        const size = container.clientWidth - 32; // padding offset
+        canvas.width = size;
+        canvas.height = size;
+        tileSize = size / GRID_SIZE;
+        drawGame();
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+
+    // --- Initialization & Level Loading ---
+    function initGame() {
+        buildLevelListUI();
+        loadCampaignLevel(0);
+        resizeCanvas();
+    }
+
+    function buildLevelListUI() {
+        const listEl = document.getElementById('levelList');
+        listEl.innerHTML = '';
+        CAMPAIGN_LEVELS.forEach((lvl, idx) => {
+            const btn = document.createElement('button');
+            btn.className = `w-full text-left px-4 py-2.5 rounded-xl text-xs font-medium flex items-center justify-between transition ${idx === currentLevelIndex ? 'bg-burgundy-900/60 border border-burgundy-700/60 text-rose-300 shadow-md' : 'bg-slate-950 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'}`;
+            btn.innerHTML = `<span>${lvl.name}</span> <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>`;
+            btn.onclick = () => {
+                switchMode('campaign');
+                loadCampaignLevel(idx);
+            };
+            listEl.appendChild(btn);
+        });
+    }
+
+    function loadCampaignLevel(idx) {
+        currentLevelIndex = idx;
+        rotationCount = 0;
+        document.getElementById('rotationsCount').textContent = rotationCount;
+        document.getElementById('levelIndicator.textContent') // fix
+        document.getElementById('levelIndicator').textContent = `Level ${idx + 1} of 5`;
+
+        // Deep copy level data
+        const src = CAMPAIGN_LEVELS[idx];
+        levelData = {
+            emitter: { ...src.emitter },
+            mirrors: src.mirrors.map(m => ({ ...m })),
+            splitters: src.splitters.map(s => ({ ...s })),
+            blockers: src.blockers.map(b => ({ ...b })),
+            targets: src.targets.map(t => ({ ...t, active: false }))
+        };
+
+        hideVictory();
+        buildLevelListUI();
+        drawGame();
+        playTone(300, 'triangle', 0.1, 0.15);
+    }
+
+    function resetCurrentLevel() {
+        if (currentMode === 'campaign') {
+            loadCampaignLevel(currentLevelIndex);
+        } else {
+            // Clear active targets status in sandbox
+            levelData.targets.forEach(t => t.active = false);
+            drawGame();
+            playTone(250, 'sine', 0.08, 0.1);
+        }
+    }
+
+    function switchMode(mode) {
+        currentMode = mode;
+        const btnCamp = document.getElementById('btnCampaignTab');
+        const btnSand = document.getElementById('btnSandboxTab');
+        const panelCamp = document.getElementById('campaignPanel');
+        const panelSand = document.getElementById('sandboxPanel');
+
+        if (mode === 'campaign') {
+            btnCamp.className = "py-2.5 px-3 rounded-lg text-sm font-semibold transition bg-burgundy-700 text-white shadow-md shadow-burgundy-900/40";
+            btnSand.className = "py-2.5 px-3 rounded-lg text-sm font-semibold transition text-slate-400 hover:text-white";
+            panelCamp.classList.remove('hidden');
+            panelSand.classList.add('hidden');
+            loadCampaignLevel(currentLevelIndex);
+        } else {
+            btnSand.className = "py-2.5 px-3 rounded-lg text-sm font-semibold transition bg-burgundy-700 text-white shadow-md shadow-burgundy-900/40";
+            btnCamp.className = "py-2.5 px-3 rounded-lg text-sm font-semibold transition text-slate-400 hover:text-white";
+            panelSand.classList.remove('hidden');
+            panelCamp.classList.add('hidden');
+            initSandboxDefault();
+        }
+    }
+
+    function initSandboxDefault() {
+        rotationCount = 0;
+        document.getElementById('rotationsCount').textContent = rotationCount;
+        levelData = {
+            emitter: { x: 0, y: 3, dir: 'RIGHT', color: 'cyan' },
+            mirrors: [
+                { x: 4, y: 3, angle: 0 }
+            ],
+            splitters: [],
+            blockers: [],
+            targets: [
+                { x: 4, y: 7, color: 'cyan', active: false }
+            ]
+        };
+        hideVictory();
+        drawGame();
+    }
+
+    function setSandboxTool(tool) {
+        sandboxTool = tool;
+        ['mirror', 'splitter', 'blocker', 'target', 'eraser'].forEach(t => {
+            const btn = document.getElementById(`tool-${t}`);
+            if (btn) {
+                if (t === tool) {
+                    btn.className = "p-3 rounded-xl border border-burgundy-600 bg-burgundy-900/40 text-rose-300 font-medium text-xs flex flex-col items-center justify-center space-y-1.5 transition";
+                } else {
+                    btn.className = "p-3 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 font-medium text-xs flex flex-col items-center justify-center space-y-1.5 transition";
+                }
+            }
+        });
+        playTone(500, 'sine', 0.05, 0.08);
+    }
+
+    function clearSandboxGrid() {
+        levelData.mirrors = [];
+        levelData.splitters = [];
+        levelData.blockers = [];
+        levelData.targets = [];
+        drawGame();
+        playTone(200, 'sawtooth', 0.1, 0.1);
+    }
+
+    // --- Raycasting / Laser Beam Tracing Engine ---
+    function traceLasers() {
+        // Reset targets active state
+        levelData.targets.forEach(t => t.active = false);
+
+        const beamsSegments = []; // Array of {x1, y1, x2, y2, color}
+        const queue = [{ x: levelData.emitter.x, y: levelData.emitter.y, dir: levelData.emitter.dir, color: levelData.emitter.color }];
+        const visitedRays = new Set(); // Prevent infinite loops
+
+        while (queue.length > 0) {
+            const current = queue.shift();
+            let cx = current.x;
+            let cy = current.y;
+            let dir = current.dir;
+            let color = current.color;
+
+            const rayKey = `${cx},${cy},${dir},${color}`;
+            if (visitedRays.has(rayKey)) continue;
+            visitedRays.add(rayKey);
+
+            // Trace ray step by step across grid or until obstacle
+            let startX = cx * tileSize + tileSize / 2;
+            let startY = cy * tileSize + tileSize / 2;
+
+            let dx = 0, dy = 0;
+            if (dir === 'UP') dy = -1;
+            if (dir === 'DOWN') dy = 1;
+            if (dir === 'LEFT') dx = -1;
+            if (dir === 'RIGHT') dx = 1;
+
+            // Step through grid
+            let currX = cx;
+            let currY = cy;
+            let terminated = false;
+
+            while (!terminated) {
+                // Check targets at current cell
+                const target = levelData.targets.find(t => t.x === currX && t.y === currY);
+                if (target) {
+                    target.active = true;
+                }
+
+                // Check next step
+                const nextX = currX + dx;
+                const nextY = currY + dy;
+
+                // Out of bounds check
+                if (nextX < 0 || nextX >= GRID_SIZE || nextY < 0 || nextY >= GRID_SIZE) {
+                    // Draw beam to edge of canvas
+                    let endX = startX + dx * (tileSize / 2);
+                    let endY = startY + dy * (tileSize / 2);
+                    if (dx !== 0) endX = dx > 0 ? canvas.width : 0;
+                    if (dy !== 0) endY = dy > 0 ? canvas.height : 0;
+
+                    beamsSegments.push({ x1: startX, y1: startY, x2: endX, y2: endY, color });
+                    break;
+                }
+
+                // Check Blocker at nextX, nextY
+                const blocker = levelData.blockers.find(b => b.x === nextX && b.y === nextY);
+                if (blocker) {
+                    let endX = nextX * tileSize + tileSize / 2;
+                    let endY = nextY * tileSize + tileSize / 2;
+                    beamsSegments.push({ x1: startX, y1: startY, x2: endX, y2: endY, color });
+                    break;
+                }
+
+                // Check Mirror at nextX, nextY
+                const mirror = levelData.mirrors.find(m => m.x === nextX && m.y === nextY);
+                if (mirror) {
+                    let endX = nextX * tileSize + tileSize / 2;
+                    let endY = nextY * tileSize + tileSize / 2;
+                    beamsSegments.push({ x1: startX, y1: startY, x2: endX, y2: endY, color });
+
+                    // Reflect logic:
+                    // angle 0: diagonal \ (top-left to bottom-right)
+                    // angle 1: diagonal / (bottom-left to top-right)
+                    let newDir = dir;
+                    if (mirror.angle === 0) {
+                        if (dir === 'RIGHT') newDir = 'DOWN';
+                        else if (dir === 'LEFT') newDir = 'UP';
+                        else if (dir === 'DOWN') newDir = 'RIGHT';
+                        else if (dir === 'UP') newDir = 'LEFT';
+                    } else {
+                        if (dir === 'RIGHT') newDir = 'UP';
+                        else if (dir === 'LEFT') newDir = 'DOWN';
+                        else if (dir === 'DOWN') newDir = 'LEFT';
+                        else if (dir === 'UP') newDir = 'RIGHT';
+                    }
+
+                    queue.push({ x: nextX, y: nextY, dir: newDir, color });
+                    terminated = true;
+                    break;
+                }
+
+                // Check Splitter at nextX, nextY
+                const splitter = levelData.splitters.find(s => s.x === nextX && s.y === nextY);
+                if (splitter) {
+                    let endX = nextX * tileSize + tileSize / 2;
+                    let endY = nextY * tileSize + tileSize / 2;
+                    beamsSegments.push({ x1: startX, y1: startY, x2: endX, y2: endY, color });
+
+                    // Splitter sends beam straight through AND perpendicular left/right
+                    let perp1 = 'LEFT', perp2 = 'RIGHT';
+                    if (dir === 'LEFT' || dir === 'RIGHT') { perp1 = 'UP'; perp2 = 'DOWN'; }
+
+                    queue.push({ x: nextX, y: nextY, dir: dir, color }); // straight
+                    queue.push({ x: nextX, y: nextY, dir: perp1, color });
+                    queue.push({ x: nextX, y: nextY, dir: perp2, color });
+
+                    terminated = true;
+                    break;
+                }
+
+                // Move forward one tile
+                let prevCenterX = currX * tileSize + tileSize / 2;
+                let prevCenterY = currY * tileSize + tileSize / 2;
+                currX = nextX;
+                currY = nextY;
+                let nextCenterX = currX * tileSize + tileSize / 2;
+                let nextCenterY = currY * tileSize + tileSize / 2;
+
+                beamsSegments.push({ x1: prevCenterX, y1: prevCenterY, x2: nextCenterX, y2: nextCenterY, color });
+                startX = nextCenterX;
+                startY = nextCenterY;
+            }
+        }
+
+        return beamsSegments;
+    }
+
+    // --- Canvas Rendering Loop ---
+    function drawGame() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 1. Draw Grid Lines
+        ctx.strokeStyle = '#27272a';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= GRID_SIZE; i++) {
+            ctx.beginPath();
+            ctx.moveTo(i * tileSize, 0);
+            ctx.lineTo(i * tileSize, canvas.height);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(0, i * tileSize);
+            ctx.lineTo(canvas.width, i * tileSize);
+            ctx.stroke();
+        }
+
+        // 2. Trace and Draw Laser Beams
+        const beams = traceLasers();
+        beams.forEach(b => {
+            ctx.save();
+            ctx.shadowBlur = 12;
+            if (b.color === 'red') ctx.shadowColor = 'rgba(239, 68, 68, 0.9)';
+            else if (b.color === 'cyan') ctx.shadowColor = 'rgba(6, 182, 212, 0.9)';
+            else if (b.color === 'emerald') ctx.shadowColor = 'rgba(16, 185, 129, 0.9)';
+
+            ctx.strokeStyle = b.color === 'red' ? '#ef4444' : (b.color === 'cyan' ? '#06b6d4' : '#10b981');
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+
+            ctx.beginPath();
+            ctx.moveTo(b.x1, b.y1);
+            ctx.lineTo(b.x2, b.y2);
+            ctx.stroke();
+            ctx.restore();
+        });
+
+        // 3. Draw Emitter
+        drawEmitter(levelData.emitter);
+
+        // 4. Draw Blockers
+        levelData.blockers.forEach(b => drawBlocker(b));
+
+        // 5. Draw Splitters
+        levelData.splitters.forEach(s => drawSplitter(s));
+
+        // 6. Draw Targets
+        levelData.targets.forEach(t => drawTarget(t));
+
+        // 7. Draw Mirrors
+        levelData.mirrors.forEach(m => drawMirror(m));
+
+        // Check Win Condition
+        checkWinCondition();
+    }
+
+    function drawEmitter(e) {
+        const x = e.x * tileSize + tileSize / 2;
+        const y = e.y * tileSize + tileSize / 2;
+
+        ctx.save();
+        ctx.fillStyle = '#18181b';
+        ctx.strokeStyle = e.color === 'red' ? '#ef4444' : (e.color === 'cyan' ? '#06b6d4' : '#10b981');
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.arc(x, y, tileSize * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Direction arrow/indicator
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.beginPath();
+        if (e.dir === 'RIGHT') {
+            ctx.moveTo(x + tileSize * 0.2, y);
+            ctx.lineTo(x - tileSize * 0.1, y - tileSize * 0.15);
+            ctx.lineTo(x - tileSize * 0.1, y + tileSize * 0.15);
+        } else if (e.dir === 'LEFT') {
+            ctx.moveTo(x - tileSize * 0.2, y);
+            ctx.lineTo(x + tileSize * 0.1, y - tileSize * 0.15);
+            ctx.lineTo(x + tileSize * 0.1, y + tileSize * 0.15);
+        } else if (e.dir === 'UP') {
+            ctx.moveTo(x, y - tileSize * 0.2);
+            ctx.lineTo(x - tileSize * 0.15, y + tileSize * 0.1);
+            ctx.lineTo(x + tileSize * 0.15, y + tileSize * 0.1);
+        } else if (e.dir === 'DOWN') {
+            ctx.moveTo(x, y + tileSize * 0.2);
+            ctx.lineTo(x - tileSize * 0.15, y - tileSize * 0.1);
+            ctx.lineTo(x + tileSize * 0.15, y - tileSize * 0.1);
+        }
+        ctx.fill();
+        ctx.restore();
+    }
+
+    function drawMirror(m) {
+        const x = m.x * tileSize + tileSize / 2;
+        const y = m.y * tileSize + tileSize / 2;
+
+        ctx.save();
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+
+        ctx.beginPath();
+        if (m.angle === 0) {
+            // \ diagonal
+            ctx.moveTo(x - tileSize * 0.3, y - tileSize * 0.3);
+            ctx.lineTo(x + tileSize * 0.3, y + tileSize * 0.3);
+        } else {
+            // / diagonal
+            ctx.moveTo(x - tileSize * 0.3, y + tileSize * 0.3);
+            ctx.lineTo(x + tileSize * 0.3, y - tileSize * 0.3);
+        }
+        ctx.stroke();
+
+        // Mirror backing glow
+        ctx.strokeStyle = 'rgba(136, 19, 55, 0.4)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawSplitter(s) {
+        const x = s.x * tileSize + tileSize / 2;
+        const y = s.y * tileSize + tileSize / 2;
+
+        ctx.save();
+        ctx.fillStyle = '#27272a';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.arc(x, y, tileSize * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 12px Inter';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('÷', x, y);
+        ctx.restore();
+    }
+
+    function drawBlocker(b) {
+        const x = b.x * tileSize + tileSize * 0.15;
+        const y = b.y * tileSize + tileSize * 0.15;
+        const size = tileSize * 0.7;
+
+        ctx.save();
+        ctx.fillStyle = '#27272a';
+        ctx.strokeStyle = '#3f3f46';
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.roundRect(x, y, size, size, 6);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawTarget(t) {
+        const x = t.x * tileSize + tileSize / 2;
+        const y = t.y * tileSize + tileSize / 2;
+
+        ctx.save();
+        ctx.fillStyle = t.active ? (t.color === 'red' ? '#ef4444' : (t.color === 'cyan' ? '#06b6d4' : '#10b981')) : '#18181b';
+        ctx.strokeStyle = t.color === 'red' ? '#ef4444' : (t.color === 'cyan' ? '#06b6d4' : '#10b981');
+        ctx.lineWidth = 2;
+
+        if (t.active) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = ctx.strokeStyle;
+        }
+
+        ctx.beginPath();
+        ctx.arc(x, y, tileSize * 0.32, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Inner core
+        ctx.fillStyle = '#09090b';
+        ctx.beginPath();
+        ctx.arc(x, y, tileSize * 0.12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // --- Interaction & Click Handlers ---
+    canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        const gridX = Math.floor(clickX / tileSize);
+        const gridY = Math.floor(clickY / tileSize);
+
+        if (gridX < 0 || gridX >= GRID_SIZE || gridY < 0 || gridY >= GRID_SIZE) return;
+
+        if (currentMode === 'campaign') {
+            // Check if mirror clicked
+            const mirror = levelData.mirrors.find(m => m.x === gridX && m.y === gridY);
+            if (mirror) {
+                mirror.angle = mirror.angle === 0 ? 1 : 0;
+                rotationCount++;
+                document.getElementById('rotationsCount').textContent = rotationCount;
+                playTone(650, 'sine', 0.06, 0.1);
+                drawGame();
+            }
+        } else {
+            // Sandbox placement mode
+            handleSandboxClick(gridX, gridY);
+        }
+    });
+
+    function handleSandboxClick(gx, gy) {
+        // Check if emitter exists here
+        if (levelData.emitter.x === gx && levelData.emitter.y === gy) return;
+
+        // Remove existing items at this cell first
+        levelData.mirrors = levelData.mirrors.filter(m => !(m.x === gx && m.y === gy));
+        levelData.splitters = levelData.splitters.filter(s => !(s.x === gx && s.y === gy));
+        levelData.blockers = levelData.blockers.filter(b => !(b.x === gx && b.y === gy));
+        levelData.targets = levelData.targets.filter(t => !(t.x === gx && t.y === gy));
+
+        if (sandboxTool === 'mirror') {
+            levelData.mirrors.push({ x: gx, y: gy, angle: 0 });
+            playTone(600, 'sine', 0.06, 0.1);
+        } else if (sandboxTool === 'splitter') {
+            levelData.splitters.push({ x: gx, y: gy });
+            playTone(700, 'sine', 0.06, 0.1);
+        } else if (sandboxTool === 'blocker') {
+            levelData.blockers.push({ x: gx, y: gy });
+            playTone(350, 'sawtooth', 0.08, 0.1);
+        } else if (sandboxTool === 'target') {
+            levelData.targets.push({ x: gx, y: gy, color: levelData.emitter.color, active: false });
+            playTone(800, 'sine', 0.08, 0.1);
+        } else if (sandboxTool === 'eraser') {
+            playTone(200, 'sine', 0.08, 0.1);
+        }
+
+        drawGame();
+    }
+
+    function rotateAllMirrorsClockwise() {
+        if (levelData.mirrors.length === 0) return;
+        levelData.mirrors.forEach(m => {
+            m.angle = m.angle === 0 ? 1 : 0;
+        });
+        rotationCount++;
+        document.getElementById('rotationsCount').textContent = rotationCount;
+        playTone(550, 'sine', 0.1, 0.1);
+        drawGame();
+    }
+
+    // --- Win Condition & Level Progression ---
+    let hasWon = false;
+
+    function checkWinCondition() {
+        if (levelData.targets.length === 0) {
+            hasWon = false;
+            return;
+        }
+
+        const allActive = levelData.targets.every(t => t.active);
+        const overlay = document.getElementById('victoryOverlay');
+
+        if (allActive && !hasWon) {
+            hasWon = true;
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            playVictoryMelody();
+        } else if (!allActive) {
+            hasWon = false;
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+        }
+    }
+
+    function hideVictory() {
+        hasWon = false;
+        const overlay = document.getElementById('victoryOverlay');
+        overlay.classList.add('opacity-0', 'pointer-events-none');
+    }
+
+    function nextLevel() {
+        if (currentLevelIndex < CAMPAIGN_LEVELS.length - 1) {
+            loadCampaignLevel(currentLevelIndex + 1);
+        } else {
+            // Completed all levels! Reset to 1 or show complete dialog
+            loadCampaignLevel(0);
+        }
+    }
+
+    function playVictoryMelody() {
+        if (!soundEnabled) return;
+        setTimeout(() => playTone(523.25, 'sine', 0.15, 0.15), 0);
+        setTimeout(() => playTone(659.25, 'sine', 0.15, 0.15), 150);
+        setTimeout(() => playTone(783.99, 'sine', 0.15, 0.15), 300);
+        setTimeout(() => playTone(1046.50, 'sine', 0.3, 0.2), 450);
+    }
+
+    // --- Modal Control ---
+    function openHelpModal() {
+        const modal = document.getElementById('helpModal');
+        modal.classList.remove('opacity-0', 'pointer-events-none');
+    }
+
+    function closeHelpModal() {
+        const modal = document.getElementById('helpModal');
+        modal.classList.add('opacity-0', 'pointer-events-none');
+    }
+
+    // Initialize on load
+    window.onload = function() {
+        initGame();
+    };
+</script>
+</body>
+</html>
