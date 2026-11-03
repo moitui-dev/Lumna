@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Lumina — Minimalist Laser & Mirror Puzzle
 
 Lumina is a sleek, browser-based laser puzzle and physics sandbox game built from scratch using HTML5 Canvas, Tailwind CSS, and vanilla JavaScript. Direct glowing beams of light across an interactive grid using rotatable mirrors, beam splitters, and blockers to illuminate target nodes.
@@ -53,3 +54,6 @@ git push -u origin main
 - **Graphics & Rendering:** HTML5 2D Canvas API
 - **Audio:** Web Audio API (Synthesizer)
 - **Icons:** FontAwesome 6.4
+=======
+# Lumna
+>>>>>>> f5c14c88ffefb6ea07cde499021ede46eafa9b31
